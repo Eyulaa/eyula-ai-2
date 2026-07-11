@@ -35,7 +35,9 @@ async function handleChat(request, env) {
       ...messages
     ];
 
-    const result = await env.AI.run('@cf/google/gemma-4-26b-a4b-it', {
+    const response = await env.AI.run(
+  'openai/gpt-5.6-luna',
+  {
       messages: aiMessages
     });
 

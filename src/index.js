@@ -35,9 +35,7 @@ async function handleChat(request, env) {
       ...messages
     ];
 
-    const response = await env.AI.run(
-  'openai/gpt-5.6-luna',
-  {
+    const response = await env.AI.run('openai/gpt-5.6-luna', {
       messages: aiMessages
     });
 

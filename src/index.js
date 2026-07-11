@@ -35,7 +35,7 @@ async function handleChat(request, env) {
       ...messages
     ];
 
-    const result = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    const result = await env.AI.run('@cf/google/gemma-4-26b-a4b-it', {
       messages: aiMessages
     });
 

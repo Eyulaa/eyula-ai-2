@@ -35,11 +35,18 @@ async function handleChat(request, env) {
       ...messages
     ];
 
-    const response = await env.AI.run('openai/gpt-5.6-luna', {
-      messages: aiMessages
+    const result = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+      messages: aiMessages,
+      max_tokens: 800
     });
 
-    return jsonResponse({ reply: result.response }, 200);
+    const reply = result && result.response;
+
+    if (!reply) {
+      return jsonResponse({ error: 'Model returned no text. Raw result: ' + JSON.stringify(result) }, 500);
+    }
+
+    return jsonResponse({ reply }, 200);
   } catch (err) {
     return jsonResponse({ error: 'Server error: ' + err.message }, 500);
   }

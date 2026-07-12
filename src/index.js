@@ -35,7 +35,7 @@ async function handleChat(request, env) {
       ...messages
     ];
 
-    const result = await env.AI.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
+    const result = await env.AI.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
       messages: aiMessages,
       max_tokens: 800
     });

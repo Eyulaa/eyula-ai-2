@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
-  "name": "eyula-ai",
+  "name": "eyula-ai-2-1",
   "compatibility_date": "2026-07-10",
   "main": "src/index.js",
   "assets": {

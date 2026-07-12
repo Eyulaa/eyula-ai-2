@@ -236,8 +236,74 @@
     border:1px solid var(--border);
     border-radius:16px;
     padding:8px 8px 8px 16px;
-    margin:16px 0 24px;
+    margin:16px 0 0;
     box-shadow:0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(110,110,247,0.02);
+  }
+
+  .composer{
+    margin:16px 0 24px;
+  }
+
+  .preview-strip{
+    display:flex;
+    gap:8px;
+    padding:0 4px 10px;
+  }
+
+  .preview-thumb{
+    position:relative;
+    width:56px;
+    height:56px;
+  }
+  .preview-thumb img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:8px;
+    border:1px solid var(--border);
+  }
+  .preview-thumb .remove-btn{
+    position:absolute;
+    top:-6px;
+    right:-6px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    background:#000;
+    color:#fff;
+    border:1px solid var(--border);
+    font-size:11px;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    padding:0;
+  }
+
+  .attach-btn{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    width:34px;
+    height:34px;
+    min-width:34px;
+    border-radius:10px;
+    padding:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16px;
+  }
+  .attach-btn:hover{background:var(--accent-light); color:var(--text); border-color:var(--accent);}
+
+  .msg-image{
+    max-width:220px;
+    max-height:220px;
+    border-radius:10px;
+    display:block;
+    margin-bottom:6px;
+    object-fit:cover;
   }
 
   input[type=text]{
@@ -301,10 +367,15 @@
         </div>
       </div>
 
-      <form id="chatForm">
-        <input type="text" id="input" placeholder="Message Eyula AI…" autocomplete="off" />
-        <button type="submit" id="sendBtn">Send</button>
-      </form>
+      <div class="composer">
+        <div class="preview-strip" id="previewStrip"></div>
+        <form id="chatForm">
+          <button type="button" class="attach-btn" id="attachBtn" title="Attach image">📎</button>
+          <input type="file" id="imageInput" accept="image/*" hidden />
+          <input type="text" id="input" placeholder="Message Eyula AI…" autocomplete="off" />
+          <button type="submit" id="sendBtn">Send</button>
+        </form>
+      </div>
     </div>
   </main>
 
@@ -316,10 +387,83 @@
   const form = document.getElementById('chatForm');
   const input = document.getElementById('input');
   const sendBtn = document.getElementById('sendBtn');
+  const attachBtn = document.getElementById('attachBtn');
+  const imageInput = document.getElementById('imageInput');
+  const previewStrip = document.getElementById('previewStrip');
 
   let history = [];
+  let pendingImage = null; // data URL of the attached image, or null
 
-  function addRow(role, text){
+  // --- Image handling ---
+
+  attachBtn.addEventListener('click', () => imageInput.click());
+
+  imageInput.addEventListener('change', async () => {
+    const file = imageInput.files[0];
+    imageInput.value = ''; // allow selecting the same file again later
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file.');
+      return;
+    }
+    try {
+      pendingImage = await resizeImageToDataUrl(file, 1024, 0.82);
+      renderPreview();
+    } catch (err) {
+      console.error(err);
+      alert('Could not read that image.');
+    }
+  });
+
+  function renderPreview(){
+    previewStrip.innerHTML = '';
+    if (!pendingImage) return;
+    const thumb = document.createElement('div');
+    thumb.className = 'preview-thumb';
+    const img = document.createElement('img');
+    img.src = pendingImage;
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'remove-btn';
+    removeBtn.textContent = '×';
+    removeBtn.addEventListener('click', () => {
+      pendingImage = null;
+      renderPreview();
+    });
+    thumb.appendChild(img);
+    thumb.appendChild(removeBtn);
+    previewStrip.appendChild(thumb);
+  }
+
+  function resizeImageToDataUrl(file, maxDim, quality){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error);
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Invalid image'));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            const scale = maxDim / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // --- Chat rendering ---
+
+  function addRow(role, text, imageDataUrl){
     if(emptyState) emptyState.remove();
     const row = document.createElement('div');
     row.className = 'row ' + (role === 'user' ? 'me' : 'ai');
@@ -328,7 +472,17 @@
     avatar.textContent = role === 'user' ? 'Y' : 'E';
     const bubble = document.createElement('div');
     bubble.className = 'bubble';
-    bubble.textContent = text;
+    if (imageDataUrl) {
+      const img = document.createElement('img');
+      img.className = 'msg-image';
+      img.src = imageDataUrl;
+      bubble.appendChild(img);
+    }
+    if (text) {
+      const textNode = document.createElement('div');
+      textNode.textContent = text;
+      bubble.appendChild(textNode);
+    }
     row.appendChild(avatar);
     row.appendChild(bubble);
     transcript.appendChild(row);
@@ -358,10 +512,24 @@
     if(row) row.remove();
   }
 
-  async function sendMessage(text){
-    history.push({ role: 'user', content: text });
-    addRow('user', text);
+  // --- Sending ---
+
+  async function sendMessage(text, imageDataUrl){
+    let content;
+    if (imageDataUrl) {
+      const parts = [];
+      parts.push({ type: 'text', text: text || "What's in this image?" });
+      parts.push({ type: 'image_url', image_url: { url: imageDataUrl } });
+      content = parts;
+    } else {
+      content = text;
+    }
+
+    history.push({ role: 'user', content });
+    addRow('user', text, imageDataUrl);
     input.value = '';
+    pendingImage = null;
+    renderPreview();
     sendBtn.disabled = true;
     addTyping();
 
@@ -397,8 +565,8 @@
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
-    if(!text) return;
-    sendMessage(text);
+    if(!text && !pendingImage) return;
+    sendMessage(text, pendingImage);
   });
 
   document.querySelectorAll('.suggestion').forEach(btn => {
